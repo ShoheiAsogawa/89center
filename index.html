@@ -494,12 +494,7 @@
         try { localStorage.setItem('LINE_UID', sub); } catch {}
       }
     }
-    // uid が無い場合はLINE連携待ち
-      if (!uid){
-        requestIdToken();
-        showToast('LINE連携中です。数秒後にもう一度お試しください。','err');
-        return;
-      }
+
 
     // 予約処理開始: ボタンをローディング状態に
     setBtnLoading('doBook', true);
@@ -542,7 +537,7 @@
       showToast('エラー: '+e.message, 'err');
     };
 
-    // id_token を用いてサーバ側でユーザーIDを検証し予約を作成
+
     google.script.run
       .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
       .withFailureHandler(handleError)
