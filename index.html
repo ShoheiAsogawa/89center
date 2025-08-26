@@ -528,11 +528,11 @@
       showToast('エラー: '+e.message, 'err');
     };
 
-    // id_token があってトークン検証用APIが用意されている場合はそのまま uid 抽出済みなので通常予約を実行
+    // id_token を用いてサーバ側でユーザーIDを検証し予約を作成
     google.script.run
       .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
       .withFailureHandler(handleError)
-      .createBooking(iso, time, staff, name, '', phone, symptoms, uid);
+      .createBookingWithToken(payload, ID_TOKEN);
   }
   
   
