@@ -38,12 +38,12 @@
   th:first-child{z-index:4}
   th{background:var(--card-2);font-weight:700}
   thead th{position:sticky;top:0;z-index:5}
-  th,td{padding:8px;min-width:90px;text-align:center}
-  td.time{background:var(--card-2);font-weight:700;min-width:64px}
+    th,td{padding:8px;min-width:90px;text-align:center}
+    td.time{background:var(--card-2);font-weight:700;min-width:64px}
   td.available{background:#fff;cursor:pointer}
   td.booked{background:var(--gray);color:#374151}
-  td.own{background:var(--orange);color:#fff}
-  .caption{color:var(--muted);font-size:12px}
+    td.own{background:var(--orange);color:#fff}
+    .caption{color:var(--muted);font-size:12px}
   
   /* Legend chips */
   .legend{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
@@ -103,9 +103,9 @@
   .summary .kv .k{width:64px;color:var(--muted);font-size:12px}
   .summary .kv .v{font-weight:600}
   .link{background:none;border:none;padding:0;font:inherit;color:var(--primary);text-decoration:underline;cursor:pointer}
-  .hdr-right{position:absolute;right:0;top:0;display:flex;gap:8px}
-  
-  /* Complete modal visual */
+    .hdr-right{position:absolute;right:0;top:0;display:flex;gap:8px}
+
+    /* Complete modal visual */
   .complete .success-ico{width:56px;height:56px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;margin:6px auto 8px;font-weight:900;font-size:28px;box-shadow:0 6px 18px rgba(251,146,60,.35)}
   .complete h2{font-size:20px;font-weight:800;margin:6px 0 10px;text-align:center}
   .complete .result-body{margin:8px auto 14px;text-align:left;max-width:360px}
@@ -126,10 +126,16 @@
   .btn.is-loading .spinner{ display:block; }
   .btn.is-loading .btn-label{ visibility:hidden; }
   .btn.is-loading, .btn:disabled{ pointer-events:none; opacity:.9; filter:brightness(.95); }
-  
+
   @keyframes btnspin{
     0%   { transform: translate(-50%,-50%) rotate(0deg); }
     100% { transform: translate(-50%,-50%) rotate(360deg); }
+  }
+
+  /* Responsive tweaks for small screens */
+  @media (max-width: 480px){
+    th,td{ min-width:56px; padding:6px 4px; font-size:12px; }
+    td.time{ min-width:44px; }
   }
   
   </style>
@@ -288,9 +294,9 @@
     }
   
     // 親（STUDIO）からのメッセージ受信はこれ1本に統合
-    window.addEventListener('message', (e) => {
-      if (!ALLOWED_ORIGINS.has(e.origin)) return;
-      const d = e.data || {};
+      window.addEventListener('message', (e) => {
+        if (!ALLOWED_ORIGINS.has(e.origin)) return;
+        const d = e.data || {};
   
       if (d.type === 'ID_TOKEN' && d.idToken){
         ID_TOKEN = d.idToken;
@@ -304,17 +310,23 @@
         }
         try { load(false); } catch {}
       }
-      if (d.type === 'SET_UID' && d.uid){
-        USER_ID = d.uid;
-        try { localStorage.setItem('LINE_UID', USER_ID); } catch {}
-        if (!ID_TOKEN) try { load(false); } catch {}
+        if (d.type === 'SET_UID' && d.uid){
+          USER_ID = d.uid;
+          try { localStorage.setItem('LINE_UID', USER_ID); } catch {}
+          if (!ID_TOKEN) try { load(false); } catch {}
+        }
+      });
+
+      // 親フレームに LINE ID トークンを要求
+      function requestIdToken(){
+        try{
+          window.parent.postMessage({ type:'REQUEST_ID_TOKEN' }, '*');
+        }catch(e){}
       }
-    });
-  
-  
-  function setBtnLoading(target, on){
-    const el = typeof target === 'string' ? document.getElementById(target) : target;
-    if (!el) return;
+
+    function setBtnLoading(target, on){
+      const el = typeof target === 'string' ? document.getElementById(target) : target;
+      if (!el) return;
     if (on){
       el.classList.add('is-loading');
       el.setAttribute('aria-busy','true');
@@ -438,9 +450,9 @@
     }
   }
   
-  document.addEventListener('DOMContentLoaded', ()=>{
-    setDate(new Date()); load(true);
-    document.getElementById('tabTos').onclick  = () => setTermsTab('tos');
+    document.addEventListener('DOMContentLoaded', ()=>{
+      setDate(new Date()); load(true); requestIdToken();
+      document.getElementById('tabTos').onclick  = () => setTermsTab('tos');
     document.getElementById('tabPriv').onclick = () => setTermsTab('priv');
     document.getElementById('prevDay').onclick=()=>shiftDate(-1);
     document.getElementById('nextDay').onclick=()=>shiftDate(1);
@@ -482,11 +494,7 @@
         try { localStorage.setItem('LINE_UID', sub); } catch {}
       }
     }
-    // id_token も uid も無い場合は連携待ち
-    if (!uid && !ID_TOKEN){
-      showToast('LINE連携中です。数秒後にもう一度お試しください。','err');
-      return;
-    }
+
 
     // 予約処理開始: ボタンをローディング状態に
     setBtnLoading('doBook', true);
@@ -529,20 +537,11 @@
       showToast('エラー: '+e.message, 'err');
     };
 
-    // uid が無い場合は id_token をサーバー側で検証して予約
-    if (!uid){
-      google.script.run
-        .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
-        .withFailureHandler(handleError)
-        .createBookingWithToken(payload, ID_TOKEN);
-      return;
-    }
 
-    // uid が判明している場合は通常の予約処理
     google.script.run
       .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
       .withFailureHandler(handleError)
-      .createBooking(iso, time, staff, name, '', phone, symptoms, uid);
+      .createBookingWithToken(payload, ID_TOKEN);
   }
   
   
