@@ -1,0 +1,560 @@
+<!DOCTYPE html><html lang="ja"><head> 
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>89CENTER予約ページ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+  :root{
+    --bg: #f7f9fc;
+    --card: #ffffff;
+    --card-2:#f3f4f6;
+    --text: #111827;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+    --primary:#2563eb;
+    --orange:#fb923c;
+    --orange-dark:#f97316;
+    --danger:#ef4444;
+    --gray:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+  .container{max-width:1000px;margin:0 auto;padding:12px}
+  header{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;position:relative}
+  h1{font-size:22px;margin:0;font-weight:800;letter-spacing:.02em}
+  .datebar{display:flex;align-items:center;justify-content:center;margin:8px 0 12px}
+  .date-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:16px;background:#fff;font-weight:700}
+  .date-pill button{border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer}
+  .btn{border:1px solid var(--border);background:#fff;border-radius:14px;padding:10px 14px;font-weight:700;cursor:pointer;transition:transform .06s ease, filter .12s ease, background-color .12s ease}
+  .btn:active{transform:translateY(1px);filter:brightness(.92)}
+  .btn-primary{background:var(--primary);color:#fff;border-color:transparent}
+  .btn-danger{background:var(--danger);color:#fff;border-color:transparent}
+  .btn-orange{background:var(--orange);border-color:transparent;color:#fff;font-weight:800;border-radius:14px}
+  .btn-orange:active{background:var(--orange-dark)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+  .grid{overflow:auto;border-radius:12px;border:1px solid var(--border);background:#fff}
+  table{border-collapse:separate;border-spacing:0;width:100%}
+  th,td{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  th:first-child, td:first-child{position:sticky;left:0;background:#fff;z-index:3}
+  th:first-child{z-index:4}
+  th{background:var(--card-2);font-weight:700}
+  thead th{position:sticky;top:0;z-index:5}
+  th,td{padding:8px;min-width:90px;text-align:center}
+  td.time{background:var(--card-2);font-weight:700;min-width:64px}
+  td.available{background:#fff;cursor:pointer}
+  td.booked{background:var(--gray);color:#374151}
+  td.own{background:var(--orange);color:#fff}
+  .caption{color:var(--muted);font-size:12px}
+  
+  /* Legend chips */
+  .legend{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
+  .legend .chip{display:inline-flex;align-items:center;gap:8px}
+  .legend .dot{width:16px;height:16px;border-radius:6px;border:1px solid var(--border)}
+  .legend .dot.own{background:var(--orange);border-color:transparent}
+  .legend .dot.booked{background:var(--gray)}
+  
+  /* overlays */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+  .modal{position:relative;width:min(92vw,520px);background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+  .modal h2{margin:0 0 12px}
+  .modal-close{position:absolute;right:8px;top:8px;width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;line-height:1;font-weight:900;transition:transform .06s ease, filter .12s ease}
+  .modal-close:active{transform:translateY(1px);filter:brightness(.92)}
+  .row{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .input,.select,.textarea{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fff}
+  .textarea{min-height:96px;resize:vertical}
+  .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+  
+  /* Calendar popup (header sticky) */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 10px;position:sticky;top:0;background:#fff;z-index:2;padding-bottom:6px}
+  .cal-nav{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#fff;font-weight:700;transition:transform .06s ease, filter .12s ease}
+  .cal-nav:active{transform:translateY(1px);filter:brightness(.92)}
+  .cal-title{font-weight:700;font-size:16px}
+  .cal-grid{display:grid;grid-template-columns: repeat(7, 1fr); gap:6px; width:100%}
+  .cal-cell{height:42px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:10px;background:#fff;font-weight:600;transition:transform .06s ease, filter .12s ease}
+  .cal-cell:active{transform:translateY(1px);filter:brightness(.92)}
+  .cal-dow{background:var(--card-2);color:#4b5563;border-style:dashed;height:36px;font-weight:700}
+  .is-disabled{opacity:.4;pointer-events:none}
+  .is-today{outline:2px solid var(--primary);outline-offset:2px}
+  .is-selected{background:var(--primary);color:#fff;border-color:transparent}
+  
+  /* toasts & confirm */
+  .toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;display:flex;flex-direction:column;gap:8px;z-index:50}
+  .toast{padding:12px 16px;border-radius:12px;background:#111827;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.2);font-weight:600}
+  .toast.ok{background:#16a34a}.toast.err{background:#ef4444}
+  
+  /* Loading overlay */
+  .loading-overlay{position:fixed;inset:0;background:rgba(55,65,81,.9);display:none;align-items:center;justify-content:center;z-index:70}
+  .loading-box{text-align:center;color:#fff}
+  .loading-title{font-weight:800;font-size:20px;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+  .loading-dot{display:inline-block;min-width:24px;text-align:right;font-weight:900}
+  .loading-sub{margin-top:10px;font-weight:700;opacity:.95}
+  
+  /* tabs for terms */
+  .tabs{display:flex;gap:8px;margin-bottom:8px}
+  .tab{padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#fff;cursor:pointer}
+  .tab.active{background:var(--primary);color:#fff;border-color:transparent}
+  .terms-box{height:220px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+  .terms-box h3{margin:0 0 10px;font-size:15px}
+  .terms-box p{margin:0 0 10px;font-size:13px;line-height:1.7}
+  
+  /* summary */
+  .summary{background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:6px 0 12px;text-align:left}
+  .summary .kv{display:flex;gap:10px;align-items:center;margin:4px 0}
+  .summary .kv .k{width:64px;color:var(--muted);font-size:12px}
+  .summary .kv .v{font-weight:600}
+  .link{background:none;border:none;padding:0;font:inherit;color:var(--primary);text-decoration:underline;cursor:pointer}
+  .hdr-right{position:absolute;right:0;top:0;display:flex;gap:8px}
+  
+  /* Complete modal visual */
+  .complete .success-ico{width:56px;height:56px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;margin:6px auto 8px;font-weight:900;font-size:28px;box-shadow:0 6px 18px rgba(251,146,60,.35)}
+  .complete h2{font-size:20px;font-weight:800;margin:6px 0 10px;text-align:center}
+  .complete .result-body{margin:8px auto 14px;text-align:left;max-width:360px}
+  .complete .result-body .rowline{padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card-2);margin:6px 0;font-weight:600}
+  
+  /* Button loading spinner ------------------------- */
+  .btn{ position: relative; }
+  .btn .btn-label{ pointer-events:none; }
+  .btn .spinner{
+    display:none; width:16px; height:16px;
+    border:2px solid currentColor;      /* ボタン文字色に追従。オレンジボタンは白になります */
+    border-top-color: transparent;
+    border-radius:50%;
+    position:absolute; left:50%; top:50%;
+    transform: translate(-50%,-50%);
+    animation: btnspin .8s linear infinite;
+  }
+  .btn.is-loading .spinner{ display:block; }
+  .btn.is-loading .btn-label{ visibility:hidden; }
+  .btn.is-loading, .btn:disabled{ pointer-events:none; opacity:.9; filter:brightness(.95); }
+  
+  @keyframes btnspin{
+    0%   { transform: translate(-50%,-50%) rotate(0deg); }
+    100% { transform: translate(-50%,-50%) rotate(360deg); }
+  }
+  
+  </style>
+  </head><body>
+  <div class="container">
+    <header>
+      <h1>89CENTER 予約</h1>
+      <div class="hdr-right"><button class="btn" id="btnTerms">ご利用条件</button></div>
+    </header>
+  
+    <div class="datebar">
+      <div class="date-pill">
+        <button id="prevDay" aria-label="前日">‹</button>
+        <div id="dateLabel"></div>
+        <button id="openCal" aria-label="日付選択">📅</button>
+        <button id="nextDay" aria-label="翌日">›</button>
+      </div>
+    </div>
+  
+    <!-- legend -->
+    <div class="legend">
+      <span class="chip"><i class="dot own"></i><span class="caption">あなたの予約</span></span>
+      <span class="chip"><i class="dot booked"></i><span class="caption">予約済み</span></span>
+      <span class="caption">(60分枠)</span>
+    </div>
+  
+    <div class="card grid"><table id="table">
+      <thead><tr><th style="min-width:70px">時間</th><th>麻生川</th><th>岡野</th><th>堀江</th><th>松田</th><th>山口</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </div>
+  
+  <!-- Loading -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+      <div class="loading-title">
+    データ取得中 <span class="loading-dot" id="loadingDots">・</span>
+    </div>
+  
+      <div class="loading-sub">89CENTER</div>
+    </div>
+  </div>
+  
+  <!-- Complete modal -->
+  <div class="overlay" id="completeOverlay" role="dialog" aria-modal="true">
+    <div class="modal complete" style="text-align:center">
+      <button class="modal-close" id="completeCloseX" aria-label="閉じる">×</button>
+      <div class="success-ico">✓</div>
+      <h2>予約が完了しました</h2>
+      <div class="result-body" id="completeBody"></div>
+      <div class="actions" style="justify-content:center">
+    <button class="btn" id="completeClose">閉じる</button>
+    </div>
+  
+    </div>
+  </div>
+  
+  <!-- Booking modal -->
+  <div class="overlay" id="bookOverlay" role="dialog" aria-modal="true">
+    <div class="modal" style="text-align:center">
+      <button class="modal-close" id="closeBookX" aria-label="閉じる">×</button>
+      <h2>予約内容の入力</h2>
+      <div id="bookSummary" class="summary">
+        <div class="kv"><span class="k">日付</span><span class="v" id="sumDate">—</span></div>
+        <div class="kv"><span class="k">スタッフ</span><span class="v" id="sumStaff">—</span></div>
+        <div class="kv"><span class="k">時間</span><span class="v" id="sumTime">—</span></div>
+      </div>
+  
+      <div class="row">
+        <div class="field"><input id="pName" class="input" placeholder="お名前"></div>
+        <div class="field"><input id="pPhone" class="input" placeholder="電話"></div>
+        <div class="field"><textarea id="pSymptoms" class="textarea" placeholder="症状（任意）"></textarea></div>
+      </div>
+      <div class="caption">内容の前に <button class="link" type="button" id="openTermsInline">ご利用条件</button> をご確認ください。</div>
+      <div class="row" style="align-items:center">
+        <label style="display:flex;gap:8px;align-items:center;justify-content:center;width:100%">
+          <input type="checkbox" id="agreeAll"> 上記の内容に同意します
+        </label>
+      </div>
+      <div class="actions" style="justify-content:center">
+        <button class="btn" id="closeBook">閉じる</button>
+        <button class="btn btn-orange" id="doBook">
+    <span class="btn-label">予約する</span>
+    <span class="spinner" aria-hidden="true"></span>
+  </button>
+  
+      </div>
+    </div>
+  </div>
+  
+  <!-- Terms modal -->
+  <div class="overlay" id="termsOverlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <button class="modal-close" id="termsCloseX" aria-label="閉じる">×</button>
+      <div class="tabs">
+        <button class="tab active" id="tabTos">利用規約</button>
+        <button class="tab" id="tabPriv">個人情報の取り扱い</button>
+      </div>
+      <div class="terms-box" id="termsBox"><h3>利用規約</h3>
+  <p>本サービスは、89CENTER（以下「当院」）が提供する予約システムです。患者さまは、本規約に同意のうえご利用ください。</p>
+  <p>1. 予約は30分単位の枠を用いますが、施術は60分単位です。<br>
+  2. 当日のキャンセルはお電話のみ対応します。無断キャンセルが続く場合、以後のご予約をお断りすることがあります。<br>
+  3. 予約内容に虚偽が判明した場合、当院は予約を取り消すことができます。<br>
+  4. 天災・システム障害等により予約が成立しない、または変更される場合があります。<br>
+  5. 本サービスの利用に関連して生じた損害について、当院は直接的かつ通常の範囲内でのみ責任を負います。</p>
+  <p>最終更新日：2025年8月</p></div>
+      <div class="actions" style="justify-content:center">
+        <button class="btn" id="termsClose">閉じる</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Calendar -->
+  <div class="overlay" id="calendarOverlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="cal-head">
+        <button class="cal-nav" id="calPrev">‹</button>
+        <div class="cal-title" id="calTitle">カレンダー</div>
+        <button class="cal-nav" id="calNext">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="actions"><button class="btn" id="calClose">閉じる</button></div>
+    </div>
+  </div>
+  
+  <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+  
+  <script>
+    // ===== Boot strap（単一の真実）=====
+    const ALLOWED_ORIGINS = new Set([
+      'https://89center.net',
+      'https://www.89center.net',
+      'https://89center.studio.site' // 必要なら
+    ]);
+  
+    let ID_TOKEN = null;   // ← 1回だけ
+    let USER_ID  = (()=>{  // ← 1回だけ（過去保存があれば拾う）
+      try { return localStorage.getItem('LINE_UID') || ''; } catch { return ''; }
+    })();
+
+    // --- ヘルパ関数: id_token から sub (LINE UID) を取り出す
+    function extractSubFromIdToken(token){
+      try{
+        const parts = String(token||'').split('.');
+        if (parts.length < 2) return '';
+        let base64 = parts[1].replace(/-/g,'+').replace(/_/g,'/');
+        // Padding を調整する
+        while (base64.length % 4 !== 0) base64 += '=';
+        const payload = atob(base64);
+        const claims = JSON.parse(payload);
+        return claims.sub || '';
+      }catch(e){
+        return '';
+      }
+    }
+  
+    // 親（STUDIO）からのメッセージ受信はこれ1本に統合
+    window.addEventListener('message', (e) => {
+      if (!ALLOWED_ORIGINS.has(e.origin)) return;
+      const d = e.data || {};
+  
+      if (d.type === 'ID_TOKEN' && d.idToken){
+        ID_TOKEN = d.idToken;
+        // id_token から UID を取り出せる場合は保存
+        if (!USER_ID){
+          const sub = extractSubFromIdToken(d.idToken);
+          if (sub){
+            USER_ID = sub;
+            try { localStorage.setItem('LINE_UID', USER_ID); } catch {}
+          }
+        }
+        try { load(false); } catch {}
+      }
+      if (d.type === 'SET_UID' && d.uid){
+        USER_ID = d.uid;
+        try { localStorage.setItem('LINE_UID', USER_ID); } catch {}
+        if (!ID_TOKEN) try { load(false); } catch {}
+      }
+    });
+  
+  
+  function setBtnLoading(target, on){
+    const el = typeof target === 'string' ? document.getElementById(target) : target;
+    if (!el) return;
+    if (on){
+      el.classList.add('is-loading');
+      el.setAttribute('aria-busy','true');
+      el.disabled = true;
+    }else{
+      el.classList.remove('is-loading');
+      el.removeAttribute('aria-busy');
+      el.disabled = false;
+    }
+  }
+  
+  function showToast(msg, type){ const w=document.getElementById('toastWrap'); const t=document.createElement('div'); t.className='toast '+(type||'ok'); t.textContent=msg; w.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 2200); }
+  function dowJP(d){ return ['日','月','火','水','木','金','土'][d.getDay()]; }
+  function fmtISO(d){ const y=d.getFullYear(); const m=('0'+(d.getMonth()+1)).slice(-2); const dd=('0'+d.getDate()).slice(-2); return y+'-'+m+'-'+dd; }
+  function fmtJP(d){ const y=d.getFullYear(); const m=d.getMonth()+1; const dd=d.getDate(); return y+'年'+('0'+m).slice(-2)+'月'+('0'+dd).slice(-2)+'日（'+dowJP(d)+'）'; }
+  
+  let __dotsTimer = null;
+  function startDots(){ const el=document.getElementById('loadingDots'); if(!el) return; let n=1; el.textContent='・'; clearInterval(__dotsTimer); __dotsTimer=setInterval(()=>{ n=(n%3)+1; el.textContent='・'.repeat(n); },420); }
+  function stopDots(){ if(__dotsTimer){ clearInterval(__dotsTimer); __dotsTimer=null; } const el=document.getElementById('loadingDots'); if(el) el.textContent='・'; }
+  function bindCloseX(overlayId, btnId){ const ov=document.getElementById(overlayId); const btn=document.getElementById(btnId); if(ov&&btn){ btn.onclick=()=> ov.style.display='none'; ov.addEventListener('click',e=>{ if(e.target===ov) ov.style.display='none'; }); } }
+  
+  const STAFF = ['麻生川','岡野','堀江','松田','山口'];
+  const FEES = {'麻生川':16500,'岡野':11000,'堀江':11000,'松田':11000,'山口':11000};
+  function showLoading(v){ const ov=document.getElementById('loadingOverlay'); ov.style.display=v?'flex':'none'; if(v) startDots(); else stopDots(); }
+  
+  let currentDate = new Date();
+  const todayISO = fmtISO(new Date());
+  const MIN_DATE = todayISO; // 過去を禁止
+  let schedule = {}, pending={};
+  
+  function setDate(d){ currentDate=d; document.getElementById('dateLabel').textContent = fmtJP(currentDate); }
+  function shiftDate(days){ const d=new Date(currentDate); d.setDate(d.getDate()+days); if (fmtISO(d) < MIN_DATE) return; setDate(d); load(true); }
+  
+  function renderTable(){
+    const tbody=document.getElementById('tbody'); tbody.innerHTML='';
+    const times = []; for (let h=9;h<21;h++) for (let m of [0,30]) times.push(('0'+h).slice(-2)+':'+('0'+m).slice(-2)); 
+    times.forEach(t=>{ const tr=document.createElement('tr'); const timeTd=document.createElement('td'); timeTd.className='time'; timeTd.textContent=t; tr.appendChild(timeTd);
+      STAFF.forEach(s=>{ const td=document.createElement('td'); const slot=(schedule[s]&&schedule[s][t])||null;
+        if (!slot || t==='21:00' || t>='20:30' || (slot && (slot.blocked))){ td.className='booked'; }
+        else if (slot.booked && slot.own) { td.className='own'; td.onclick=()=>openOwnDetail(s,t); }
+        else if (slot.booked) { td.className='booked'; }
+        else { td.className='available'; td.onclick=()=>tryStartBooking(s,t); }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  
+  function tryStartBooking(staff, time){
+    const cur = schedule[staff][time];
+    const hh=parseInt(time.slice(0,2)), mm=parseInt(time.slice(3));
+    const next = (new Date(0,0,0,hh,mm+30)).toTimeString().slice(0,5);
+    const end = (new Date(0,0,0,hh,mm+60)).toTimeString().slice(0,5);
+    const nxt = schedule[staff][next];
+    if (!cur || !nxt || cur.booked || cur.blocked || nxt.booked || nxt.blocked || time>='20:30') { showToast('60分枠が確保できません。別の時間をお選びください。','err'); return; }
+    pending={staff, time, next, end};
+    document.getElementById('sumStaff').textContent = staff;
+    document.getElementById('sumTime').textContent = time+'〜'+end;
+    document.getElementById('sumDate').textContent = fmtJP(currentDate);
+    document.getElementById('bookOverlay').style.display='flex';
+  }
+  function openOwnDetail(){ showToast('ご自身の予約枠です。'); }
+  
+  function load(withLoader){
+    const iso = fmtISO(currentDate);
+    if (withLoader) showLoading(true);
+  
+    const ok = (res) => { schedule = res; renderTable(); if (withLoader) showLoading(false); };
+    const ng = (e)  => { if (withLoader) showLoading(false); showToast('エラー: '+ e.message, 'err'); };
+  
+    if (ID_TOKEN){
+      google.script.run.withSuccessHandler(ok).withFailureHandler(ng)
+        .getScheduleWithToken(iso, ID_TOKEN);
+    }else{
+      google.script.run.withSuccessHandler(ok).withFailureHandler(ng)
+        .getSchedule(iso, false, USER_ID || '');
+    }
+  }
+  
+  
+  
+  /* ---- Terms tab contents ---- */
+  const TOS_HTML = `
+    <h3>利用規約</h3>
+    <p>本サービスは、89CENTER（以下「当院」）が提供する予約システムです。患者さまは、本規約に同意のうえご利用ください。</p>
+    <p>1. 予約は30分単位の枠を用いますが、施術は60分単位です。<br>
+       2. 当日のキャンセルはお電話のみ対応します。無断キャンセルが続く場合、以後のご予約をお断りすることがあります。<br>
+       3. 予約内容に虚偽が判明した場合、当院は予約を取り消すことができます。<br>
+       4. 天災・システム障害等により予約が成立しない、または変更される場合があります。<br>
+       5. 本サービスの利用に関連して生じた損害について、当院は直接的かつ通常の範囲内でのみ責任を負います。</p>
+    <p>最終更新日：2025年8月</p>
+  `;
+  
+  const PRIV_HTML = `
+    <h3>個人情報の取り扱い</h3>
+    <p>当院は、予約管理・連絡・サービス提供のために、氏名・電話番号・（任意の）症状等の個人情報を取得・利用します。</p>
+    <p>【利用目的】予約の受付・変更・連絡、リマインド配信、来院時の本人確認、円滑な施術提供。</p>
+    <p>【第三者提供】法令に基づく場合を除き、本人の同意なく第三者に提供しません。</p>
+    <p>【委託】システム運用等を外部に委託する場合があります。その際は適切に委託先を監督します。</p>
+    <p>【保管期間】目的達成に必要な期間保管し、不要になった情報は適切に削除します。</p>
+    <p>【安全管理】不正アクセス・漏えい防止のため、必要かつ適切な安全管理措置を講じます。</p>
+    <p>【開示等の請求】ご自身の情報の開示・訂正・削除等は、当院窓口までご連絡ください。</p>
+    <p>【お問い合わせ】89CENTER 個人情報窓口</p>
+  `;
+  
+  /* タブ切替 */
+  function setTermsTab(which){
+    const tosBtn = document.getElementById('tabTos');
+    const privBtn = document.getElementById('tabPriv');
+    const box = document.getElementById('termsBox');
+    if (!tosBtn || !privBtn || !box) return;
+  
+    if (which === 'priv'){
+      tosBtn.classList.remove('active');
+      privBtn.classList.add('active');
+      box.innerHTML = PRIV_HTML;
+    }else{
+      privBtn.classList.remove('active');
+      tosBtn.classList.add('active');
+      box.innerHTML = TOS_HTML;
+    }
+  }
+  
+  document.addEventListener('DOMContentLoaded', ()=>{
+    setDate(new Date()); load(true);
+    document.getElementById('tabTos').onclick  = () => setTermsTab('tos');
+    document.getElementById('tabPriv').onclick = () => setTermsTab('priv');
+    document.getElementById('prevDay').onclick=()=>shiftDate(-1);
+    document.getElementById('nextDay').onclick=()=>shiftDate(1);
+    document.getElementById('openCal').onclick=()=>{ document.getElementById('calendarOverlay').style.display='flex'; renderCalendar(); };
+    document.getElementById('calClose').onclick=()=>document.getElementById('calendarOverlay').style.display='none';
+    bindCloseX('calendarOverlay','calCloseX'); bindCloseX('bookOverlay','closeBookX'); bindCloseX('completeOverlay','completeCloseX'); bindCloseX('termsOverlay','termsCloseX');
+    document.getElementById('bookOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) e.currentTarget.style.display='none'; });
+    document.getElementById('btnTerms').onclick=()=>document.getElementById('termsOverlay').style.display='flex';
+    const openTermsInline = document.getElementById('openTermsInline'); if (openTermsInline) openTermsInline.onclick = () => document.getElementById('termsOverlay').style.display = 'flex';
+    document.getElementById('termsClose').onclick=()=>document.getElementById('termsOverlay').style.display='none';
+    document.getElementById('closeBook').onclick=()=>document.getElementById('bookOverlay').style.display='none';
+    document.getElementById('completeClose').onclick=()=>document.getElementById('completeOverlay').style.display='none';
+    document.getElementById('doBook').onclick=()=>doBook();
+  });
+  
+  
+  function doBook(){
+    // 入力チェック: 規約同意と必須項目
+    if (!document.getElementById('agreeAll').checked){
+      showToast('ご利用条件への同意が必要です。','err');
+      return;
+    }
+    const name  = document.getElementById('pName').value.trim();
+    const phone = document.getElementById('pPhone').value.trim();
+    const symptoms = document.getElementById('pSymptoms').value.trim();
+    if (!name || !phone){
+      showToast('お名前と電話番号を入力してください。','err');
+      return;
+    }
+
+    // ユーザーIDを確定: localStorage または id_token から取得
+    let uid = USER_ID || '';
+    // id_token があれば、まだ uid が無い場合に抽出して保存
+    if (!uid && ID_TOKEN){
+      const sub = extractSubFromIdToken(ID_TOKEN);
+      if (sub){
+        uid = sub;
+        USER_ID = sub;
+        try { localStorage.setItem('LINE_UID', sub); } catch {}
+      }
+    }
+    // uid が無い場合はLINE連携待ち
+    if (!uid){
+      showToast('LINE連携中です。数秒後にもう一度お試しください。','err');
+      return;
+    }
+
+    // 予約処理開始: ボタンをローディング状態に
+    setBtnLoading('doBook', true);
+    const iso = fmtISO(currentDate);
+    const staff = pending.staff;
+    const time  = pending.time;
+    const payload = { date: iso, startTime: time, staff, patientName: name, email:'', phone, symptoms };
+
+    // 成功ハンドラ
+    const handleSuccess = (res) => {
+      setBtnLoading('doBook', false);
+      const okFlag = res?.ok ?? res?.success;
+      if (!okFlag){
+        showToast(res?.message || '失敗しました','err');
+        return;
+      }
+      const sched = res.schedule || res;
+      schedule = sched;
+      renderTable();
+      document.getElementById('bookOverlay').style.display = 'none';
+
+      // 完了モーダルの内容を生成
+      const endTime = pending.end;
+      const fee     = FEES[pending.staff] || 0;
+      const body    = document.getElementById('completeBody');
+      body.innerHTML = [
+        '<div class="rowline">日付：'+fmtJP(currentDate)+'</div>',
+        '<div class="rowline">時間：'+pending.time+'〜'+endTime+'</div>',
+        '<div class="rowline">担当：'+pending.staff+'</div>',
+        '<div class="rowline">料金：'+fee.toLocaleString()+'円</div>',
+        '<div class="rowline">お名前：'+name+'</div>',
+        phone ? '<div class="rowline">電話：'+phone+'</div>' : '',
+        symptoms ? '<div class="rowline">症状：'+symptoms.replace(/</g,'&lt;')+'</div>' : ''
+      ].join('');
+      document.getElementById('completeOverlay').style.display = 'flex';
+    };
+    // 失敗ハンドラ
+    const handleError = (e) => {
+      setBtnLoading('doBook', false);
+      showToast('エラー: '+e.message, 'err');
+    };
+
+    // id_token があってトークン検証用APIが用意されている場合はそのまま uid 抽出済みなので通常予約を実行
+    google.script.run
+      .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
+      .withFailureHandler(handleError)
+      .createBooking(iso, time, staff, name, '', phone, symptoms, uid);
+  }
+  
+  
+  
+  /* Calendar rendering */
+  let calendarMonth=new Date();
+  function renderCalendar(){
+    const y=calendarMonth.getFullYear(), m=calendarMonth.getMonth();
+    const grid=document.getElementById('calGrid'); document.getElementById('calTitle').textContent=y+'年'+('0'+(m+1)).slice(-2)+'月'; grid.innerHTML='';
+    ['日','月','火','水','木','金','土'].forEach(w=>{ const h=document.createElement('div'); h.className='cal-cell cal-dow'; h.textContent=w; grid.appendChild(h); });
+    const first=new Date(y,m,1).getDay();
+    for(let i=0;i<first;i++){ const s=document.createElement('div'); s.className='cal-cell is-disabled'; grid.appendChild(s); }
+    const last=new Date(y,m+1,0).getDate(); const tISO = fmtISO(new Date()); const curISO = fmtISO(currentDate);
+    for(let d=1; d<=last; d++){ const dateObj=new Date(y,m,d); const iso=fmtISO(dateObj);
+      const cell=document.createElement('button'); cell.className='cal-cell'; cell.textContent=d;
+      if (iso<MIN_DATE){ cell.classList.add('is-disabled'); cell.disabled=true; }
+      if (iso===tISO) cell.classList.add('is-today'); if (iso===curISO) cell.classList.add('is-selected');
+      cell.onclick=()=>{ setDate(dateObj); document.getElementById('calendarOverlay').style.display='none'; load(true); };
+      grid.appendChild(cell);
+    }
+    document.getElementById('calPrev').onclick=()=>{ calendarMonth.setMonth(calendarMonth.getMonth()-1); renderCalendar(); };
+    document.getElementById('calNext').onclick=()=>{ calendarMonth.setMonth(calendarMonth.getMonth()+1); renderCalendar(); };
+  }
+  </script>
+  </body></html>

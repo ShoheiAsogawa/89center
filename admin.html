@@ -1,0 +1,676 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>89CENTER 管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 患者UIと同じトークン */
+  --bg:#f7f9fc; --card:#ffffff; --card-2:#f3f4f6; --text:#111827;
+  --muted:#6b7280; --border:#e5e7eb; --primary:#2563eb;
+  --orange:#fb923c; --orange-dark:#f97316; --danger:#ef4444; --gray:#e5e7eb;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+.container{max-width:1000px;margin:0 auto;padding:12px}
+
+/* header */
+header{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;position:relative}
+h1{font-size:22px;margin:0;font-weight:800;letter-spacing:.02em}
+.hdr-right{position:absolute;right:0;top:0;display:flex;gap:8px}
+
+/* buttons（患者UIと同じスピナー仕様） */
+.btn{border:1px solid var(--border);background:#fff;border-radius:14px;padding:10px 14px;font-weight:700;cursor:pointer;transition:transform .06s ease,filter .12s ease,background-color .12s ease; position:relative}
+.btn:active{transform:translateY(1px);filter:brightness(.92)}
+.btn-primary{background:var(--primary);color:#fff;border-color:transparent}
+.btn-orange{background:var(--orange);border-color:transparent;color:#fff;font-weight:800}
+.btn-orange:active{background:var(--orange-dark)}
+.btn-danger{background:var(--danger);color:#fff;border-color:transparent}
+.btn .btn-label{pointer-events:none}
+.btn .spinner{display:none;width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);animation:btnspin .8s linear infinite}
+.btn.is-loading .spinner{display:block}
+.btn.is-loading .btn-label{visibility:hidden}
+.btn.is-loading,.btn:disabled{pointer-events:none;opacity:.9;filter:brightness(.95)}
+@keyframes btnspin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+
+/* date pill */
+.datebar{display:flex;align-items:center;justify-content:center;margin:8px 0 12px}
+.date-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:16px;background:#fff;font-weight:700}
+.date-pill button{border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer}
+
+/* legend */
+.legend{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
+.legend .chip{display:inline-flex;align-items:center;gap:8px}
+.legend .dot{width:16px;height:16px;border-radius:6px;border:1px solid var(--border)}
+.legend .dot.booked{background:var(--orange);border-color:transparent}
+.legend .dot.blocked{background:var(--gray)}
+
+/* grid */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+.grid{overflow:auto;border-radius:12px;border:1px solid var(--border);background:#fff}
+table{border-collapse:separate;border-spacing:0;width:100%}
+th,td{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+th:first-child,td:first-child{position:sticky;left:0;background:#fff;z-index:3}
+th:first-child{z-index:4}
+thead th{position:sticky;top:0;z-index:5;background:var(--card-2);font-weight:700}
+th,td{padding:8px;min-width:90px;text-align:center}
+td.time{background:var(--card-2);font-weight:700;min-width:84px}
+td.available{background:#fff;cursor:pointer}
+td.blocked{background:var(--gray);color:#374151}
+td.booked{background:var(--orange);color:#fff;font-weight:900}
+.cell-label{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* overlays & modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+.modal{position:relative;width:min(92vw,560px);background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.modal h2{margin:0 0 12px}
+.modal-close{position:absolute;right:8px;top:8px;width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;line-height:1;font-weight:900}
+.row{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.input,.select,.textarea{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fff}
+.textarea{min-height:96px;resize:vertical}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+
+/* calendar popup */
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 10px;position:sticky;top:0;background:#fff;z-index:2;padding-bottom:6px}
+.cal-nav{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#fff;font-weight:700}
+.cal-title{font-weight:700;font-size:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;width:100%}
+.cal-cell{height:42px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:10px;background:#fff;font-weight:600}
+.cal-dow{background:var(--card-2);color:#4b5563;border-style:dashed;height:36px;font-weight:700}
+.is-today{outline:2px solid var(--primary);outline-offset:2px}
+.is-selected{background:var(--primary);color:#fff;border-color:transparent}
+
+/* page loading */
+.loading-overlay{position:fixed;inset:0;background:rgba(55,65,81,.9);display:none;align-items:center;justify-content:center;z-index:70}
+.loading-box{text-align:center;color:#fff}
+.loading-title{font-weight:800;font-size:20px;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.loading-dot{display:inline-block;min-width:24px;text-align:left;font-weight:900}
+.loading-sub{margin-top:10px;font-weight:700;opacity:.95}
+
+/* === Patient UI と同じボタン表現・アニメ === */
+button { appearance:none; -webkit-appearance:none; }
+
+.modal .btn,
+.overlay .btn { 
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .06s ease, filter .12s ease, background-color .12s ease;
+}
+.modal .btn:active,
+.overlay .btn:active { transform: translateY(1px); filter: brightness(.92); }
+
+/* オレンジ（患者UI準拠） */
+.modal .btn-orange,
+.overlay .btn-orange {
+  background: var(--orange);
+  color: #fff;
+  border-color: transparent;
+}
+.modal .btn-orange:active,
+.overlay .btn-orange:active { background: var(--orange-dark); }
+
+/* スピナー（患者UIと同じ） */
+.modal .btn .btn-label,
+.overlay .btn .btn-label { pointer-events:none; }
+.modal .btn .spinner,
+.overlay .btn .spinner {
+  display:none;width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;
+  border-radius:50%;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  animation:btnspin .8s linear infinite;
+}
+.modal .btn.is-loading .spinner,
+.overlay .btn.is-loading .spinner { display:block; }
+.modal .btn.is-loading .btn-label,
+.overlay .btn.is-loading .btn-label { visibility:hidden; }
+.modal .btn.is-loading,
+.overlay .btn.is-loading { pointer-events:none; opacity:.92; filter:brightness(.95); }
+
+@keyframes btnspin { to { transform:translate(-50%,-50%) rotate(360deg); } }
+
+</style>
+</head><body>
+<div class="container">
+  <header>
+    <h1>管理ダッシュボード</h1>
+    <div class="hdr-right">
+      <button class="btn" id="openBlockRange"><span class="btn-label">予約枠をブロック</span><span class="spinner" aria-hidden="true"></span></button>
+    </div>
+  </header>
+
+  <div class="datebar">
+    <div class="date-pill">
+      <button id="openCal" aria-label="日付選択">📅</button>
+      <div id="dateLabelMain"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span class="chip"><i class="dot booked"></i><span class="caption">予約（患者名表示）</span></span>
+    <span class="chip"><i class="dot blocked"></i><span class="caption">ブロック（理由表示）</span></span>
+    <span class="caption">(60分枠)</span>
+  </div>
+
+  <div class="card grid"><table id="table">
+    <thead><tr><th style="min-width:88px">時間</th><th>麻生川</th><th>岡野</th><th>堀江</th><th>松田</th><th>山口</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table></div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="loading-title">データ取得中 <span class="loading-dot" id="loadingDots">・</span></div>
+    <div class="loading-sub">89CENTER</div>
+  </div>
+</div>
+
+<!-- 予約詳細 -->
+<div class="overlay" id="detailOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="detailCloseX" aria-label="閉じる">×</button>
+    <h2>予約詳細</h2>
+    <div id="detailBody" class="caption"></div>
+    <div class="row">
+      <div class="field"><label>管理メモ（該当セルのNoteに保存）</label><textarea id="adminMemo" class="textarea" placeholder="スタッフに共有したい注意点など"></textarea></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="detailClose">閉じる</button>
+      <button class="btn" id="editBtn">基本情報を編集</button>
+      <button class="btn-danger" id="doCancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 編集 -->
+<div class="overlay" id="editOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="editCloseX" aria-label="閉じる">×</button>
+    <h2>予約の編集</h2>
+    <div class="row">
+      <div class="field"><label>患者名</label><input id="editName" class="input"></div>
+      <div class="field"><label>電話</label><input id="editPhone" class="input"></div>
+      <div class="field"><label>メール（任意）</label><input id="editEmail" class="input"></div>
+    </div>
+    <div class="field"><label>症状（任意）</label><textarea id="editSymptoms" class="textarea"></textarea></div>
+    <div class="field"><label>管理メモ</label><textarea id="editMemo" class="textarea"></textarea></div>
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('editOverlay').style.display='none'">閉じる</button>
+      <button class="btn-orange" id="editSave"><span class="btn-label">保存</span><span class="spinner" aria-hidden="true"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- セルアクション -->
+<div class="overlay" id="chooseOverlay" role="dialog" aria-modal="true">
+  <div class="modal" style="text-align:center">
+    <button class="modal-close" id="chooseCloseX" aria-label="閉じる">×</button>
+    <h2>このセルで何をしますか？</h2>
+    <div class="actions" style="gap:12px;justify-content:center">
+      <button class="btn" id="chooseBlock">ブロック</button>
+      <!-- ★ここを患者UIと同じスピナー付きボタンに -->
+<button class="btn btn-orange" id="chooseCreate">
+  <span class="btn-label">予約を作成</span><span class="spinner" aria-hidden="true"></span>
+</button>
+
+    </div>
+    <div class="actions"><button class="btn" id="chooseClose">閉じる</button></div>
+  </div>
+</div>
+
+<!-- 単枠ブロック -->
+<div class="overlay" id="blockOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="blockCloseX" aria-label="閉じる">×</button>
+    <h2>ブロック設定（単枠）</h2>
+    <div class="row">
+      <div class="field"><label>スタッフ</label>
+        <select id="blockStaff" class="select"><option>麻生川</option><option>岡野</option><option>堀江</option><option>松田</option><option>山口</option></select></div>
+      <div class="field"><label>時刻</label><input id="blockTime" class="input" readonly></div>
+    </div>
+    <div class="field"><label>理由（任意・管理者のみ）</label><input id="blockReason" class="input" placeholder="例：出張・準備等"></div>
+    <div class="actions">
+      <button class="btn" id="blockClose">閉じる</button>
+      <button class="btn" id="blockOff">解除</button>
+      <button class="btn btn-orange" id="blockOn">
+  <span class="btn-label">ブロック</span><span class="spinner" aria-hidden="true"></span>
+</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- 予約作成 -->
+<div class="overlay" id="createOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="createCloseX" aria-label="閉じる">×</button>
+    <h2>予約を作成</h2>
+    <div class="row">
+      <div class="field"><label>スタッフ</label><select id="createStaff" class="select"><option>麻生川</option><option>岡野</option><option>堀江</option><option>松田</option><option>山口</option></select></div>
+      <div class="field"><label>開始時刻（60分）</label><select id="createTime" class="select"></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>患者名</label><input id="createName" class="input"></div>
+      <div class="field"><label>電話</label><input id="createPhone" class="input"></div>
+      <div class="field"><label>メール（任意）</label><input id="createEmail" class="input"></div>
+    </div>
+    <div class="field"><label>症状（任意）</label><textarea id="createSymptoms" class="textarea"></textarea></div>
+    <div class="field"><label>管理メモ（任意）</label><textarea id="createMemo" class="textarea"></textarea></div>
+    <div class="actions">
+      <button class="btn" id="createClose">閉じる</button>
+      <button class="btn btn-orange" id="createSubmit">
+  <span class="btn-label">登録</span><span class="spinner" aria-hidden="true"></span></button>
+
+    </div>
+  </div>
+</div>
+
+<!-- 範囲ブロック -->
+<div class="overlay" id="blockRangeOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="blockRangeCloseX" aria-label="閉じる">×</button>
+    <h2>予約枠をブロック</h2>
+    <div class="row">
+      <div class="field"><label>スタッフ</label><select id="brStaff" class="select"><option>麻生川</option><option>岡野</option><option>堀江</option><option>松田</option><option>山口</option></select></div>
+      <div class="field"><label>日付</label><input id="brDate" type="date" class="input"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>開始</label><select id="brStart" class="select"></select></div>
+      <div class="field"><label>終了</label><select id="brEnd" class="select"></select></div>
+    </div>
+    <div class="field"><label>理由（任意）</label><input id="brReason" class="input" placeholder="例：会議/出張/メンテ等"></div>
+    <div class="actions">
+      <button class="btn" id="blockRangeClose">閉じる</button>
+      <button class="btn btn-orange" id="blockRangeDo">
+  <span class="btn-label">ブロック</span><span class="spinner" aria-hidden="true"></span>
+</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- カレンダー -->
+<div class="overlay" id="calendarOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="calCloseX" aria-label="閉じる">×</button>
+    <div class="cal-head">
+      <button class="cal-nav" id="calPrev">‹</button>
+      <div class="cal-title" id="calTitle">カレンダー</div>
+      <button class="cal-nav" id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="actions"><button class="btn" id="calClose">閉じる</button></div>
+  </div>
+</div>
+
+<script>
+/* ========== 共通ユーティリティ ========== */
+function alertToast(msg){ alert(msg); } // 管理UIは alert で十分
+function dowJP(d){ return ['日','月','火','水','木','金','土'][d.getDay()]; }
+function fmtISO(d){ const y=d.getFullYear(),m=('0'+(d.getMonth()+1)).slice(-2),dd=('0'+d.getDate()).slice(-2); return y+'-'+m+'-'+dd; }
+function fmtJP(d){ return d.getFullYear()+'年'+('0'+(d.getMonth()+1)).slice(-2)+'月'+('0'+d.getDate()).slice(-2)+'日（'+dowJP(d)+'）'; }
+let __dotsTimer=null;
+function startDots(){ const el=document.getElementById('loadingDots'); if(!el) return; let n=1; el.textContent='・'; clearInterval(__dotsTimer); __dotsTimer=setInterval(()=>{ n=(n%3)+1; el.textContent='・'.repeat(n); },420); }
+function stopDots(){ if(__dotsTimer){ clearInterval(__dotsTimer); __dotsTimer=null; } const el=document.getElementById('loadingDots'); if(el) el.textContent='・'; }
+function showLoading(v){ const ov=document.getElementById('loadingOverlay'); ov.style.display=v?'flex':'none'; if(v) startDots(); else stopDots(); }
+function setBtnLoading(target,on){ const el=typeof target==='string'?document.getElementById(target):target; if(!el) return; if(on){ el.classList.add('is-loading'); el.setAttribute('aria-busy','true'); el.disabled=true; } else { el.classList.remove('is-loading'); el.removeAttribute('aria-busy'); el.disabled=false; }}
+
+/* ========== 画面状態 ========== */
+const STAFF=['麻生川','岡野','堀江','松田','山口'];
+let currentDate=new Date();
+let schedule={}; // schedule[staff][time] = { booked, patientName, bookingId } or { blocked, reason }
+
+/* 日付表示 */
+function setDate(d){
+  currentDate=d;
+  const label=document.getElementById('dateLabelMain');
+  if(label) label.textContent=fmtJP(currentDate);
+}
+
+/* ========== テーブル描画 ========== */
+function renderTable(){
+  const tbody=document.getElementById('tbody'); tbody.innerHTML='';
+  const times=[]; for(let h=9;h<21;h++) for(const m of [0,30]) times.push(('0'+h).slice(-2)+':'+('0'+m).slice(-2));
+
+  times.forEach(t=>{
+    const tr=document.createElement('tr');
+    const timeTd=document.createElement('td'); timeTd.className='time'; timeTd.textContent=t; tr.appendChild(timeTd);
+
+    STAFF.forEach(s=>{
+      const td=document.createElement('td');
+      const slot=(schedule[s] && schedule[s][t]) || null;
+
+      if(!slot){
+        td.className='available';
+        td.onclick=()=>openCellAction(t,s);
+      }else if(slot.blocked){
+        td.className='blocked';
+        td.textContent = slot.reason || 'ブロック';
+        td.onclick=()=>openBlockModal(t,s,true,slot.reason||'');
+      }else if(slot.booked){
+        td.className = 'booked';
+        td.textContent = slot.patientName || '予約';
+        td.style.fontWeight = '900';
+        td.onclick = () => openDetailSmart(slot.startTime || t, s, slot.bookingId || '');
+      }else{
+        td.className='available';
+        td.onclick=()=>openCellAction(t,s);
+      }
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+/* ========== データロード（管理フラグで過去も取得） ========== */
+function load(withLoader){
+  if(withLoader) showLoading(true);
+  google.script.run.withSuccessHandler(res=>{
+    schedule=res||{}; renderTable(); if(withLoader) showLoading(false);
+  }).withFailureHandler(e=>{ if(withLoader) showLoading(false); alert('エラー: '+e.message); })
+    .getSchedule(fmtISO(currentDate), true);
+}
+
+/* ========== セルアクション ========== */
+let pendingCell={time:null,staff:null};
+function openCellAction(time,staff){
+  pendingCell={time,staff};
+  // 予約作成用の時刻（60分確保できるかチェック）
+  const sel=document.getElementById('createTime'); sel.innerHTML='';
+  const hh=parseInt(time.slice(0,2)), mm=parseInt(time.slice(3));
+  const next=(new Date(0,0,0,hh,mm+30)).toTimeString().slice(0,5);
+  const cur=schedule[staff]&&schedule[staff][time], nxt=schedule[staff]&&schedule[staff][next];
+  const ok=cur && !cur.booked && !cur.blocked && nxt && !nxt.booked && !nxt.blocked && time<'20:30';
+  const opt=document.createElement('option'); opt.value=time; opt.textContent=time+(ok?'':'（不可）'); opt.disabled=!ok; sel.appendChild(opt);
+
+  document.getElementById('createStaff').value=staff;
+  document.getElementById('blockStaff').value=staff;
+  document.getElementById('blockTime').value=time;
+
+  document.getElementById('chooseOverlay').style.display='flex';
+}
+document.getElementById('chooseCreate').onclick=()=>{ document.getElementById('chooseOverlay').style.display='none'; document.getElementById('createOverlay').style.display='flex'; };
+document.getElementById('chooseBlock').onclick=()=>{ document.getElementById('chooseOverlay').style.display='none'; document.getElementById('blockOverlay').style.display='flex'; };
+document.getElementById('chooseClose').onclick=()=>document.getElementById('chooseOverlay').style.display='none';
+document.getElementById('chooseCloseX').onclick=()=>document.getElementById('chooseOverlay').style.display='none';
+
+/* ========== 予約詳細 / 編集 / キャンセル / メモ ========== */
+let currentDetail=null;
+function openDetail(bookingId){
+  if(!bookingId){ alert('この予約IDが見つかりません'); return; }
+  google.script.run.withSuccessHandler(d=>{
+    currentDetail=d; if(!d){ alert('見つかりません'); return; }
+    document.getElementById('detailBody').innerHTML =
+      '日時：'+d.date+' '+d.startTime+'〜'+d.endTime+'<br>'+
+      '担当：'+d.staff+'<br>'+
+      '氏名：'+(d.patientName||'')+'<br>'+
+      '電話：'+(d.phone||'-')+'　メール：'+(d.email||'-')+'<br>'+
+      '症状：'+((d.symptoms||'-')+'').replace(/\n/g,'<br>');
+    document.getElementById('adminMemo').value=d.adminMemo||'';
+    document.getElementById('detailOverlay').style.display='flex';
+  }).getBookingDetails(bookingId);
+}
+document.getElementById('detailClose').onclick=()=>document.getElementById('detailOverlay').style.display='none';
+document.getElementById('detailCloseX').onclick=()=>document.getElementById('detailOverlay').style.display='none';
+
+function showDetailModal(d){
+  console.log('[showDetailModal] data=', d);
+  if(!d){ alert('見つかりません'); return; }
+  currentDetail=d;
+  document.getElementById('detailBody').innerHTML =
+    '日時：'+d.date+' '+d.startTime+'〜'+d.endTime+'<br>'+
+    '担当：'+d.staff+'<br>'+
+    '氏名：'+(d.patientName||'')+'<br>'+
+    '電話：'+(d.phone||'-')+'　メール：'+(d.email||'-')+'<br>'+
+    '症状：'+((d.symptoms||'-')+'').replace(/\n/g,'<br>');
+  document.getElementById('adminMemo').value=d.adminMemo||'';
+  document.getElementById('detailOverlay').style.display='flex';
+}
+
+function openDetailSmart(time, staff, bookingId){
+  const iso = fmtISO(currentDate);
+
+  if (bookingId){
+    google.script.run
+      .withSuccessHandler(d => d ? showDetailModal(d) : tryKey())
+      .withFailureHandler(e => alert('取得エラー: '+e.message))
+      .getBookingDetails(bookingId);
+    return;
+  }
+
+  tryKey();
+  function tryKey(){
+    const candidates = [time, stepMin(time,-30)];
+    (function next(i){
+      if (i >= candidates.length){
+        google.script.run.withSuccessHandler(diag => {
+          console.log('[diagCell]', diag);
+          alert('該当予約が見つかりませんでした');
+        }).diagCell(iso, staff, time);
+        return;
+      }
+      const key = candidates[i];
+      google.script.run
+        .withSuccessHandler(d => d ? showDetailModal(d) : next(i+1))
+        .withFailureHandler(e => alert('取得エラー: '+e.message))
+        .adminGetBookingByKey(iso, staff, key);  // ← ここが存在すること
+    })(0);
+  }
+}
+
+
+function handleAdminCellClick(staff, time){
+  const iso = document.querySelector('#dateLabel').dataset.iso || // 画面で使ってるISO
+              new Date().toISOString().slice(0,10);
+
+  const cell = (window.schedule && window.schedule[staff] && window.schedule[staff][time]) || {};
+  const id = cell.bookingId || '';
+
+  if (id){
+    google.script.run
+      .withSuccessHandler(d => d ? showDetailModal(d) : alert('予約が見つかりませんでした'))
+      .withFailureHandler(e => alert('取得エラー: '+e.message))
+      .getBookingDetails(id);
+  } else {
+    // 9:30をクリックしても9:00-10:00の予約を拾える
+    google.script.run
+      .withSuccessHandler(d => d ? showDetailModal(d) : alert('該当する予約が見つかりませんでした'))
+      .withFailureHandler(e => alert('取得エラー: '+e.message))
+      .adminFindFirstByTime(iso, time);
+  }
+}
+
+function stepMin(hhmm, delta){
+  const m = hhmm.match(/^(\d{2}):(\d{2})$/); if (!m) return hhmm;
+  const dt = new Date(2000,0,1, +m[1], +m[2]); dt.setMinutes(dt.getMinutes()+delta);
+  return ('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2);
+}
+
+
+// 分シフト（"09:30" → stepMin(...,-30) で "09:00"）
+function stepMin(hhmm, delta){
+  const m = hhmm.match(/^(\d{2}):(\d{2})$/); if(!m) return hhmm;
+  const base = new Date(2000,0,1, parseInt(m[1],10), parseInt(m[2],10));
+  base.setMinutes(base.getMinutes()+delta);
+  const h=('0'+base.getHours()).slice(-2), n=('0'+base.getMinutes()).slice(-2);
+  return `${h}:${n}`;
+}
+
+
+
+
+
+// 管理メモ（Note）即保存
+document.getElementById('adminMemo').addEventListener('change', ()=>{
+  if(!currentDetail) return;
+  const memo=document.getElementById('adminMemo').value;
+  google.script.run.withSuccessHandler(res=>{
+    schedule=res.schedule||schedule; renderTable();
+  }).adminUpdateBooking(currentDetail.bookingId,{adminMemo:memo});
+});
+
+// キャンセル
+document.getElementById('doCancel').onclick=()=>{
+  if(!currentDetail) return;
+  if(!confirm('この予約をキャンセルしますか？')) return;
+  google.script.run.withSuccessHandler(res=>{
+    alert(res.message||'キャンセルしました');
+    document.getElementById('detailOverlay').style.display='none';
+    schedule=res.schedule||schedule; renderTable();
+  }).adminCancelBooking(currentDetail.bookingId);
+};
+
+// 編集
+document.getElementById('editBtn').onclick=()=>{
+  if(!currentDetail) return;
+  document.getElementById('editName').value=currentDetail.patientName||'';
+  document.getElementById('editPhone').value=currentDetail.phone||'';
+  document.getElementById('editEmail').value=currentDetail.email||'';
+  document.getElementById('editSymptoms').value=currentDetail.symptoms||'';
+  document.getElementById('editMemo').value=currentDetail.adminMemo||'';
+  document.getElementById('editOverlay').style.display='flex';
+};
+document.getElementById('editCloseX').onclick=()=>document.getElementById('editOverlay').style.display='none';
+document.getElementById('editSave').onclick=()=>{
+  if(!currentDetail) return;
+  setBtnLoading('editSave',true);
+  const payload={
+    patientName:document.getElementById('editName').value.trim(),
+    phone:document.getElementById('editPhone').value.trim(),
+    email:document.getElementById('editEmail').value.trim(),
+    symptoms:document.getElementById('editSymptoms').value.trim(),
+    adminMemo:document.getElementById('editMemo').value.trim()
+  };
+  google.script.run.withSuccessHandler(res=>{
+    setBtnLoading('editSave',false);
+    alert(res.message||'保存しました');
+    document.getElementById('editOverlay').style.display='none';
+    document.getElementById('detailOverlay').style.display='none';
+    schedule=res.schedule||schedule; renderTable();
+  }).withFailureHandler(e=>{ setBtnLoading('editSave',false); alert('エラー: '+e.message); })
+    .adminUpdateBooking(currentDetail.bookingId,payload);
+};
+
+/* ========== 単枠ブロック ON/OFF ========== */
+function openBlockModal(t,s,exists,reason){
+  document.getElementById('blockStaff').value=s;
+  document.getElementById('blockTime').value=t;
+  document.getElementById('blockReason').value=reason||'';
+  document.getElementById('blockOverlay').style.display='flex';
+}
+document.getElementById('blockOn').onclick=()=>{
+  const iso=fmtISO(currentDate), s=document.getElementById('blockStaff').value, t=document.getElementById('blockTime').value, r=document.getElementById('blockReason').value;
+  setBtnLoading('blockOn',true);
+  google.script.run.withSuccessHandler(res=>{
+    setBtnLoading('blockOn',false);
+    schedule=res.schedule||schedule; renderTable(); document.getElementById('blockOverlay').style.display='none';
+  }).setBlock(iso,t,s,r,true);
+};
+document.getElementById('blockOff').onclick=()=>{
+  const iso=fmtISO(currentDate), s=document.getElementById('blockStaff').value, t=document.getElementById('blockTime').value;
+  google.script.run.withSuccessHandler(res=>{
+    schedule=res.schedule||schedule; renderTable(); document.getElementById('blockOverlay').style.display='none';
+  }).setBlock(iso,t,s,'',false);
+};
+document.getElementById('blockClose').onclick=()=>document.getElementById('blockOverlay').style.display='none';
+document.getElementById('blockCloseX').onclick=()=>document.getElementById('blockOverlay').style.display='none';
+
+/* ========== 予約作成（管理） ========== */
+document.getElementById('createSubmit').onclick=()=>{
+  const staff=document.getElementById('createStaff').value;
+  const time=document.getElementById('createTime').value;
+  const name=document.getElementById('createName').value.trim();
+  const phone=document.getElementById('createPhone').value.trim();
+  const email=document.getElementById('createEmail').value.trim();
+  const symptoms=document.getElementById('createSymptoms').value.trim();
+  const adminMemo=document.getElementById('createMemo').value.trim();
+  if(!name||!phone){ alert('氏名と電話は必須です。'); return; }
+  setBtnLoading('createSubmit',true);
+  google.script.run.withSuccessHandler(res=>{
+    setBtnLoading('createSubmit',false);
+    if(!res.success){ alert(res.message||'登録失敗'); return; }
+    schedule=res.schedule||schedule; renderTable(); document.getElementById('createOverlay').style.display='none';
+  }).adminCreateBooking(fmtISO(currentDate), time, staff, name, email, phone, symptoms, adminMemo);
+};
+document.getElementById('createClose').onclick=()=>document.getElementById('createOverlay').style.display='none';
+document.getElementById('createCloseX').onclick=()=>document.getElementById('createOverlay').style.display='none';
+
+/* ========== 範囲ブロック（右上） ========== */
+function fillTimeOptions(sel, start='09:00', end='21:00', step=30){
+  sel.innerHTML=''; let [h,m]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  while(h<eh || (h===eh && m<=em)){
+    const t=('0'+h).slice(-2)+':'+('0'+m).slice(-2);
+    const o=document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o);
+    m+=step; if(m>=60){ h++; m-=60; }
+  }
+}
+document.getElementById('openBlockRange').onclick=()=>{
+  document.getElementById('brDate').value=fmtISO(currentDate);
+  fillTimeOptions(document.getElementById('brStart'),'09:00','20:30');
+  fillTimeOptions(document.getElementById('brEnd'),'09:30','21:00');
+  document.getElementById('blockRangeOverlay').style.display='flex';
+};
+document.getElementById('blockRangeClose').onclick=()=>document.getElementById('blockRangeOverlay').style.display='none';
+document.getElementById('blockRangeCloseX').onclick=()=>document.getElementById('blockRangeOverlay').style.display='none';
+document.getElementById('blockRangeDo').onclick=()=>{
+  const staff=document.getElementById('brStaff').value;
+  const date=document.getElementById('brDate').value;
+  const start=document.getElementById('brStart').value;
+  const end=document.getElementById('brEnd').value;
+  const reason=document.getElementById('brReason').value;
+  if(!date||!start||!end){ alert('日付/開始/終了を選択してください'); return; }
+  if(end<=start){ alert('終了は開始より後にしてください'); return; }
+  setBtnLoading('blockRangeDo',true);
+  google.script.run.withSuccessHandler(res=>{
+    setBtnLoading('blockRangeDo',false);
+    schedule=res.schedule||schedule; renderTable(); document.getElementById('blockRangeOverlay').style.display='none';
+  }).withFailureHandler(e=>{
+    setBtnLoading('blockRangeDo',false); alert('エラー: '+e.message);
+  }).adminSetBlockRange(date, staff, start, end, reason, true);
+};
+
+/* ========== カレンダー（過去日も選択可） ========== */
+let calendarMonth=new Date();
+function renderCalendar(){
+  const y=calendarMonth.getFullYear(), m=calendarMonth.getMonth();
+  const grid=document.getElementById('calGrid'); document.getElementById('calTitle').textContent=y+'年'+('0'+(m+1)).slice(-2)+'月'; grid.innerHTML='';
+  ['日','月','火','水','木','金','土'].forEach(w=>{ const h=document.createElement('div'); h.className='cal-cell cal-dow'; h.textContent=w; grid.appendChild(h); });
+  const first=new Date(y,m,1).getDay(); for(let i=0;i<first;i++){ const s=document.createElement('div'); s.className='cal-cell'; s.style.visibility='hidden'; grid.appendChild(s); }
+  const last=new Date(y,m+1,0).getDate(); const tISO=fmtISO(new Date()); const curISO=fmtISO(currentDate);
+  for(let d=1; d<=last; d++){
+    const dateObj=new Date(y,m,d); const iso=fmtISO(dateObj);
+    const cell=document.createElement('button'); cell.className='cal-cell'; cell.textContent=d;
+    if(iso===tISO) cell.classList.add('is-today'); if(iso===curISO) cell.classList.add('is-selected');
+    cell.onclick=()=>{ setDate(dateObj); document.getElementById('calendarOverlay').style.display='none'; load(true); };
+    grid.appendChild(cell);
+  }
+  document.getElementById('calPrev').onclick=()=>{ calendarMonth.setMonth(calendarMonth.getMonth()-1); renderCalendar(); };
+  document.getElementById('calNext').onclick=()=>{ calendarMonth.setMonth(calendarMonth.getMonth()+1); renderCalendar(); };
+}
+
+function stepMin(hhmm, delta){
+  const m = hhmm.match(/^(\d{2}):(\d{2})$/); if(!m) return hhmm;
+  const base = new Date(2000,0,1, parseInt(m[1],10), parseInt(m[2],10));
+  base.setMinutes(base.getMinutes()+delta);
+  const h=('0'+base.getHours()).slice(-2), n=('0'+base.getMinutes()).slice(-2);
+  return `${h}:${n}`;
+}
+
+
+/* ========== 初期化 ========== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  setDate(new Date());
+  load(true);
+
+  // 📅を押して日付選択
+  document.getElementById('openCal').onclick=()=>{ document.getElementById('calendarOverlay').style.display='flex'; renderCalendar(); };
+  document.getElementById('calClose').onclick=()=>document.getElementById('calendarOverlay').style.display='none';
+  document.getElementById('calCloseX').onclick=()=>document.getElementById('calendarOverlay').style.display='none';
+});
+</script>
+</body></html>
