@@ -260,6 +260,7 @@
   <script>
     // ===== Boot strap（単一の真実）=====
     const ALLOWED_ORIGINS = new Set([
+      'https://liff.line.me',
       'https://89center.net',
       'https://www.89center.net',
       'https://89center.studio.site' // 必要なら
@@ -481,8 +482,8 @@
         try { localStorage.setItem('LINE_UID', sub); } catch {}
       }
     }
-    // uid が無い場合はLINE連携待ち
-    if (!uid){
+    // id_token も uid も無い場合は連携待ち
+    if (!uid && !ID_TOKEN){
       showToast('LINE連携中です。数秒後にもう一度お試しください。','err');
       return;
     }
@@ -528,7 +529,16 @@
       showToast('エラー: '+e.message, 'err');
     };
 
-    // id_token があってトークン検証用APIが用意されている場合はそのまま uid 抽出済みなので通常予約を実行
+    // uid が無い場合は id_token をサーバー側で検証して予約
+    if (!uid){
+      google.script.run
+        .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
+        .withFailureHandler(handleError)
+        .createBookingWithToken(payload, ID_TOKEN);
+      return;
+    }
+
+    // uid が判明している場合は通常の予約処理
     google.script.run
       .withSuccessHandler((r) => handleSuccess(r?.success !== undefined ? { ok: r.success, schedule: r.schedule } : r))
       .withFailureHandler(handleError)
