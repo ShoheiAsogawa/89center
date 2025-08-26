@@ -744,10 +744,21 @@ function cors_(out, status) {
 // LINE Login/ミニアプリのid_token検証
 function verifyIdToken_(idToken) {
   const url = 'https://api.line.me/oauth2/v2.1/verify';
-  const res = UrlFetchApp.fetch(url, { method: 'post', payload, muteHttpExceptions: true });
+  const payload =
+    'id_token=' + encodeURIComponent(idToken) +
+    '&client_id=' + encodeURIComponent(LINE_CHANNEL_ID);
+  const res = UrlFetchApp.fetch(url, {
+    method: 'post',
+    payload: payload,
+    contentType: 'application/x-www-form-urlencoded',
+    muteHttpExceptions: true,
+  });
   const code = res.getResponseCode();
   if (code !== 200) return null;
   const json = JSON.parse(res.getContentText() || '{}');
-  if (json && json.sub && json.aud === LINE_CHANNEL_ID) return json;
+  if (json && json.sub && json.aud === LINE_CHANNEL_ID) {
+    Logger.log('verifyIdToken_ success sub: ' + json.sub);
+    return json;
+  }
   return null;
 }
