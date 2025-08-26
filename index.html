@@ -273,9 +273,11 @@
     ]);
   
     let ID_TOKEN = null;   // ← 1回だけ
-    let USER_ID  = (()=>{  // ← 1回だけ（過去保存があれば拾う）
-      try { return localStorage.getItem('LINE_UID') || ''; } catch { return ''; }
-    })();
+    let my_id = '';
+    try {
+      my_id = localStorage.getItem('my_id');
+    } catch (e) {}
+    let USER_ID = my_id || '';
 
     // --- ヘルパ関数: id_token から sub (LINE UID) を取り出す
     function extractSubFromIdToken(token){
@@ -305,14 +307,14 @@
           const sub = extractSubFromIdToken(d.idToken);
           if (sub){
             USER_ID = sub;
-            try { localStorage.setItem('LINE_UID', USER_ID); } catch {}
+            try { localStorage.setItem('my_id', USER_ID); } catch {}
           }
         }
         try { load(false); } catch {}
       }
         if (d.type === 'SET_UID' && d.uid){
           USER_ID = d.uid;
-          try { localStorage.setItem('LINE_UID', USER_ID); } catch {}
+          try { localStorage.setItem('my_id', USER_ID); } catch {}
           if (!ID_TOKEN) try { load(false); } catch {}
         }
       });
@@ -491,7 +493,7 @@
       if (sub){
         uid = sub;
         USER_ID = sub;
-        try { localStorage.setItem('LINE_UID', sub); } catch {}
+        try { localStorage.setItem('my_id', sub); } catch {}
       }
     }
 
